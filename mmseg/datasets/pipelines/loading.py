@@ -3,7 +3,7 @@ import os.path as osp
 
 import mmcv
 import numpy as np
-
+import cv2
 from ..builder import PIPELINES
 
 
@@ -129,10 +129,18 @@ class LoadAnnotations(object):
                                 results['ann_info']['seg_map'])
         else:
             filename = results['ann_info']['seg_map']
-        img_bytes = self.file_client.get(filename)
-        gt_semantic_seg = mmcv.imfrombytes(
-            img_bytes, flag='unchanged',
-            backend=self.imdecode_backend).squeeze().astype(np.uint8)
+
+        palette = [[0,0,0], [192,0,128], [0,128,192], [0,128,64], [128,0,0], [64,0,128], [64,0,192] ,[192,128,64], [192,192,128], [64,64,128], [128,0,192]]
+        seg_map = cv2.imread(filename)
+        seg_map[:, :, :3] = seg_map[:, :, (2, 1, 0)]
+        gt_semantic_seg = []
+        for i in range(len(seg_map)):
+            tmp = []
+            for j in range(len(seg_map)):
+                tmp.append(palette.index(list(seg_map[i][j])))
+            gt_semantic_seg.append(tmp)
+        gt_semantic_seg = np.array(gt_semantic_seg, dtype=np.uint8)
+
         # modify if custom classes
         if results.get('label_map', None) is not None:
             for old_id, new_id in results['label_map'].items():
